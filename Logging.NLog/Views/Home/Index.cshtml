@@ -1,8 +1,43 @@
-﻿@{
+﻿@using Logging.Common.Models;
+@model TranscriptsViewModel;
+@{
     ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div>
+    <div>
+        <h3 class="display-4, text-center">Transcripts</h3>
+        <h4 style="color:red;">@Model.Message</h4>
+    </div>
+
+    <div>
+        @foreach (Transcript transcript in Model.Transcripts)
+        {
+            <div style="border-bottom:1px solid midnightblue; font-weight:bold; color: midnightblue; margin-top:20px;">Name: @transcript.Student.FirstName <span></span> @transcript.Student.LastName</div>
+            <table>
+                <thead style="font-weight:bold; color: midnightblue;">
+                    <tr>
+                        <td style="padding-right:20px; min-width:225px;">Course</td>
+                        <td>Grade</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (Course course in transcript.Courses)
+                    {
+                        <tr>
+                            <td style="padding-right:20px; min-width:225px;">@course.Name</td>
+                            <td>@course.Grade</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div>
+        <br />
+        @Html.ActionLink("Show More", "Index", "Home")
+        <br />
+        @Html.ActionLink("Show More (Error)", "ErroredIndex", "Home")
+    </div>
 </div>
