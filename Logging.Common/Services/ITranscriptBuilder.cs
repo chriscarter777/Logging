@@ -9,8 +9,6 @@ namespace Logging.Common.Services
 {
     public interface ITranscriptBuilder
      {
-          Transcript Build(Guid session, bool throwException);
-
-          List<Transcript> BuildMany(Guid session, int thisMany, bool throwException);
+          List<Transcript> BuildMany(BuildTranscriptRequest buildRequest);
      }
 }

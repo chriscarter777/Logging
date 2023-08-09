@@ -2,7 +2,9 @@
 using Logging.Common.Services;
 using Logging.Serilog.Models;
 using Microsoft.AspNetCore.Mvc;
+using Serilog.Context;
 using System.Diagnostics;
+using System.Net;
 
 namespace Logging.Serilog.Controllers;
 public class HomeController : Controller
@@ -18,47 +20,91 @@ public class HomeController : Controller
 
      public IActionResult Index()
      {
+          string method = $"{nameof(HomeController)}.{nameof(Index)}";
           Guid session = Guid.NewGuid();
-          _logger.LogInformation($"{nameof(Index)} session {session} starting.");
+          IPAddress? userIP = Request.HttpContext.Connection.RemoteIpAddress;
+          LogContext.PushProperty("Method", method);
+          LogContext.PushProperty("Session", session);
+          WriteLogDelineator();
+
+          _logger.LogInformation("Called by UserIP {ip}.", userIP);
           try
           {
-               List<Transcript> transcripts = _transcriptBuilder.BuildMany(session, 3, false);
+               BuildTranscriptRequest buildRequest = new BuildTranscriptRequest(session, 3, false);
+               List<Transcript> transcripts = _transcriptBuilder.BuildMany(buildRequest);
+               LogContext.PushProperty("Method", method);
+
+               if (transcripts.Count != 3)
+               {
+                    _logger.LogWarning("Unexpected number of transcripts returned.");
+               }
+
                TranscriptsViewModel viewModel = new TranscriptsViewModel(transcripts);
+               _logger.LogInformation("Returning {count}.", transcripts.Count);
                return View(viewModel);
           }
           catch (Exception ex)
           {
-               _logger.LogError(ex, $"{nameof(Index)} session {session}");
+               _logger.LogError(ex, "EXCEPTION");
                TranscriptsViewModel viewModel = new TranscriptsViewModel(ex.Message);
                return View(viewModel);
           }
-     }
-     public IActionResult ErroredIndex()
-     {
-          Guid session = Guid.NewGuid();
-          _logger.LogInformation($"{nameof(ErroredIndex)} session {session} starting.");
-          try
+          finally
           {
-               List<Transcript> transcripts = _transcriptBuilder.BuildMany(session, 3, true);
-               TranscriptsViewModel viewModel = new TranscriptsViewModel(transcripts);
-               return View("Index", viewModel);
-          }
-          catch (Exception ex)
-          {
-               _logger.LogError(ex, $"{nameof(ErroredIndex)} session {session}");
-               TranscriptsViewModel viewModel = new TranscriptsViewModel(ex.Message);
-               return View("Index", viewModel);
+               WriteLogDelineator();
+               LogContext.Reset();
           }
      }
 
-     public IActionResult Privacy()
+     public IActionResult ShowMeAnException()
      {
-          return View();
+          string method = $"{nameof(HomeController)}.{nameof(ShowMeAnException)}";
+          Guid session = Guid.NewGuid();
+          IPAddress? userIP = Request.HttpContext.Connection.RemoteIpAddress;
+          LogContext.PushProperty("Method", method);
+          LogContext.PushProperty("Session", session);
+          WriteLogDelineator();
+
+          _logger.LogInformation("Called by UserIP {ip}.", userIP);
+          try
+          {
+               BuildTranscriptRequest buildRequest = new BuildTranscriptRequest(session, 3, true);
+               List<Transcript> transcripts = _transcriptBuilder.BuildMany(buildRequest);
+               LogContext.PushProperty("Method", method);
+
+               if (transcripts.Count != 3)
+               {
+                    _logger.LogWarning("Unexpected number of transcripts returned.");
+               }
+
+               TranscriptsViewModel viewModel = new TranscriptsViewModel(transcripts);
+               _logger.LogInformation("Returning {count}.", transcripts.Count);
+               return View("Index", viewModel);
+          }
+          catch (Exception ex)
+          {
+               _logger.LogError(ex, $"{nameof(ShowMeAnException)} session {session}");
+               TranscriptsViewModel viewModel = new TranscriptsViewModel(ex.Message);
+               return View("Index", viewModel);
+          }
+          finally
+          {
+               WriteLogDelineator();
+               LogContext.Reset();
+          }
      }
 
      [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
      public IActionResult Error()
      {
           return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+     }
+
+
+     //private methods
+
+     private void WriteLogDelineator()
+     {
+          _logger.LogInformation("\n=====================================================================================");
      }
 }

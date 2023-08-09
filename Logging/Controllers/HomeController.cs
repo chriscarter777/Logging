@@ -3,12 +3,14 @@ using Logging.Common.Services;
 using Logging.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
+using System.Net;
 
 namespace Logging.Controllers;
 public class HomeController : Controller
 {
      private readonly ILogger<HomeController> _logger;
      private readonly ITranscriptBuilder _transcriptBuilder;
+     private readonly string _timestampFormat = "yyyy-MM-dd HH:mm:ss.sss";
 
      public HomeController(ILogger<HomeController> logger, ITranscriptBuilder transcriptBuilder)
      {
@@ -19,46 +21,81 @@ public class HomeController : Controller
      public IActionResult Index()
      {
           Guid session = Guid.NewGuid();
-          _logger.LogInformation($"{nameof(Index)} session {session} starting.");
+          WriteLogDelineator();
+
+          //verbatim logging
+          _logger.LogInformation($"{DateTime.Now.ToString(_timestampFormat)} Index starting: userIP={Request.HttpContext.Connection.RemoteIpAddress} session {session}");
           try
           {
-               List<Transcript> transcripts = _transcriptBuilder.BuildMany(session, 3, false);
+               BuildTranscriptRequest buildRequest = new BuildTranscriptRequest(session, 3, false);
+               List<Transcript> transcripts = _transcriptBuilder.BuildMany(buildRequest);
+
+               if (transcripts.Count != 3)
+               {
+                    _logger.LogWarning($"{DateTime.Now.ToString(_timestampFormat)} Index session {session}: Unexpected number of transcripts ({transcripts.Count}) returned.");
+               }
+
                TranscriptsViewModel viewModel = new TranscriptsViewModel(transcripts);
+               _logger.LogInformation($"{DateTime.Now.ToString(_timestampFormat)} Index returning {transcripts.Count} transcripts: session={session}");
                return View(viewModel);
           }
           catch (Exception ex)
           {
-               _logger.LogError(ex, $"{nameof(Index)} session {session}");
+               _logger.LogError(ex, $"{DateTime.Now.ToString(_timestampFormat)} Index session {session}");
                TranscriptsViewModel viewModel = new TranscriptsViewModel(ex.Message);
                return View(viewModel);
           }
-     }
-     public IActionResult ErroredIndex()
-     {
-          Guid session = Guid.NewGuid();
-          _logger.LogInformation($"{nameof(ErroredIndex)} session {session} starting.");
-          try
+          finally
           {
-               List<Transcript> transcripts = _transcriptBuilder.BuildMany(session, 3, true);
-               TranscriptsViewModel viewModel = new TranscriptsViewModel(transcripts);
-               return View("Index", viewModel);
-          }
-          catch (Exception ex)
-          {
-               _logger.LogError(ex, $"{nameof(ErroredIndex)} session {session}");
-               TranscriptsViewModel viewModel = new TranscriptsViewModel(ex.Message);
-               return View("Index", viewModel);
+               WriteLogDelineator();
           }
      }
 
-     public IActionResult Privacy()
+     public IActionResult ShowMeAnException()
      {
-          return View();
+          string method = nameof(ShowMeAnException);
+          Guid session = Guid.NewGuid();
+          IPAddress? userIP = Request.HttpContext.Connection.RemoteIpAddress;
+
+          //logging with variables
+          _logger.LogInformation("{timestamp} {method} starting: userIP={userIP} session={session}", DateTime.Now.ToString(_timestampFormat), method, userIP, session);
+          try
+          {
+               BuildTranscriptRequest buildRequest = new BuildTranscriptRequest(session, 3, true);
+               List<Transcript> transcripts = _transcriptBuilder.BuildMany(buildRequest);
+
+               if (transcripts.Count != 3)
+               {
+                    _logger.LogWarning("{timestamp} {method} session {session}: Unexpected number of transcripts ({count}) returned.", DateTime.Now.ToString(_timestampFormat), method, session, transcripts.Count);
+               }
+
+               TranscriptsViewModel viewModel = new TranscriptsViewModel(transcripts);
+               _logger.LogInformation("{timestamp} {method} returning {count} transcripts: session={session}", DateTime.Now.ToString(_timestampFormat), method, transcripts.Count, session);
+               return View("Index", viewModel);
+          }
+          catch (Exception ex)
+          {
+               _logger.LogError(ex, "{timestamp} {method} session {session}", DateTime.Now.ToString(_timestampFormat), method, session);
+               TranscriptsViewModel viewModel = new TranscriptsViewModel(ex.Message);
+               return View("Index", viewModel);
+          }
+          finally
+          {
+               WriteLogDelineator();
+          }
      }
 
      [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
      public IActionResult Error()
      {
           return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+     }
+
+
+     //private methods
+
+     private void WriteLogDelineator()
+     {
+          _logger.LogInformation("\n=====================================================================================");
      }
 }

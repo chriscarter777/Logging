@@ -3,6 +3,7 @@ using Logging.Common.Services;
 using Logging.NLog.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
+using System.Net;
 
 namespace Logging.NLog.Controllers;
 public class HomeController : Controller
@@ -18,12 +19,24 @@ public class HomeController : Controller
 
      public IActionResult Index()
      {
+          string method = nameof(Index);
           Guid session = Guid.NewGuid();
-          _logger.LogInformation($"{nameof(Index)} session {session} starting.");
+          IPAddress? userIP = Request.HttpContext.Connection.RemoteIpAddress;
+          WriteLogDelineator();
+
+          _logger.LogInformation("{method} starting: userIP={userIP} session={session}",  method, userIP, session);
           try
           {
-               List<Transcript> transcripts = _transcriptBuilder.BuildMany(session, 3, false);
+               BuildTranscriptRequest buildRequest = new BuildTranscriptRequest(session, 3, false);
+               List<Transcript> transcripts = _transcriptBuilder.BuildMany(buildRequest);
+
+               if (transcripts.Count != 3)
+               {
+                    _logger.LogWarning($"{nameof(Index)} session {session}: Unexpected number of transcripts returned.");
+               }
+
                TranscriptsViewModel viewModel = new TranscriptsViewModel(transcripts);
+               _logger.LogInformation($"{nameof(Index)} returning {transcripts.Count} transcripts: session={session} .");
                return View(viewModel);
           }
           catch (Exception ex)
@@ -32,33 +45,57 @@ public class HomeController : Controller
                TranscriptsViewModel viewModel = new TranscriptsViewModel(ex.Message);
                return View(viewModel);
           }
+          finally
+          {
+               WriteLogDelineator();
+          }
      }
-     public IActionResult ErroredIndex()
+
+     public IActionResult ShowMeAnException()
      {
+          string method = nameof(ShowMeAnException);
           Guid session = Guid.NewGuid();
-          _logger.LogInformation($"{nameof(ErroredIndex)} session {session} starting.");
+          IPAddress? userIP = Request.HttpContext.Connection.RemoteIpAddress;
+          WriteLogDelineator();
+
+          _logger.LogInformation("{method} starting: userIP={userIP} session={session}", method, userIP, session);
           try
           {
-               List<Transcript> transcripts = _transcriptBuilder.BuildMany(session, 3, true);
+               BuildTranscriptRequest buildRequest = new BuildTranscriptRequest(session, 3, true);
+               List<Transcript> transcripts = _transcriptBuilder.BuildMany(buildRequest);
+
+               if (transcripts.Count != 3)
+               {
+                    _logger.LogWarning($"{nameof(Index)} session {session}: Unexpected number of transcripts returned.");
+               }
+
                TranscriptsViewModel viewModel = new TranscriptsViewModel(transcripts);
+               _logger.LogInformation($"{nameof(ShowMeAnException)} returning {transcripts.Count} transcripts: session={session} .");
                return View("Index", viewModel);
           }
           catch (Exception ex)
           {
-               _logger.LogError(ex, $"{nameof(ErroredIndex)} session {session}");
+               _logger.LogError(ex, $"{nameof(ShowMeAnException)} session {session}");
                TranscriptsViewModel viewModel = new TranscriptsViewModel(ex.Message);
                return View("Index", viewModel);
           }
-     }
-
-     public IActionResult Privacy()
-     {
-          return View();
+          finally
+          {
+               WriteLogDelineator();
+          }
      }
 
      [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
      public IActionResult Error()
      {
           return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+     }
+
+
+     //private methods
+
+     private void WriteLogDelineator()
+     {
+          _logger.LogInformation("\n=====================================================================================");
      }
 }
