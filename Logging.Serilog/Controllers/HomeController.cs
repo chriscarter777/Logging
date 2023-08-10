@@ -45,6 +45,7 @@ public class HomeController : Controller
           }
           catch (Exception ex)
           {
+               LogContext.PushProperty("Method", method);
                _logger.LogError(ex, "EXCEPTION");
                TranscriptsViewModel viewModel = new TranscriptsViewModel(ex.Message);
                return View(viewModel);
@@ -83,6 +84,7 @@ public class HomeController : Controller
           }
           catch (Exception ex)
           {
+               LogContext.PushProperty("Method", method);
                _logger.LogError(ex, $"{nameof(ShowMeAnException)} session {session}");
                TranscriptsViewModel viewModel = new TranscriptsViewModel(ex.Message);
                return View("Index", viewModel);

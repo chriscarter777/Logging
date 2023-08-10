@@ -13,6 +13,9 @@ builder.Services.AddScoped<ITranscriptBuilder, TranscriptBuilder>();
 builder.Logging.ClearProviders();
 builder.Logging.AddDebug();
 builder.Logging.AddConsole();
+builder.Logging.AddApplicationInsights(configureTelemetryConfiguration: (config) =>
+            config.ConnectionString = builder.Configuration.GetConnectionString("APPLICATIONINSIGHTS_CONNECTION_STRING"),
+            configureApplicationInsightsLoggerOptions: (options) => { });
 
 
 
