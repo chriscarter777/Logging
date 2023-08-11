@@ -19,7 +19,7 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Debug(outputTemplate: logTemplate)
     .WriteTo.Console(outputTemplate: logTemplate)
     .WriteTo.File(@"C:\temp\serilog-LoggingDemo-.log", rollingInterval: RollingInterval.Day, outputTemplate: logTemplate)
-    .WriteTo.ApplicationInsights(TelemetryConfiguration.Active, TelemetryConverter.Traces)
+    //.WriteTo.ApplicationInsights(TelemetryConfiguration.Active, TelemetryConverter.Traces)
     .CreateLogger();
 
 
